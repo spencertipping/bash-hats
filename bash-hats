@@ -13,7 +13,7 @@ function hat_use {
   fi
 
   # Make the specified path absolute
-  local new_hat=$(cd "$1"; pwd)
+  local new_hat=$(builtin cd "$1"; pwd)
 
   # Hats don't keep in-memory state, so no need to uninitialize any prior hat.
   # All we need to do is apply the new one, which entails loading command
@@ -45,7 +45,10 @@ function hat_observe {
     # Don't append a duplicate. This happens sometimes because the DEBUG trap
     # is more invasive than we really need.
     local last_line=$(tail -n1 "$hat_current/.bash-hat")
-    local new_line=$(printf "%s\t%s\t%s\n" "$USER" "$HOSTNAME" "$cmdline")
+    local new_line=$(printf "%s\t%s\t%s\n" \
+                            "$USER" \
+                            "$HOSTNAME" \
+                            "${cmdline//$'\n'/ }")
     [[ "$new_line" == "$last_line" ]] \
       || echo "$new_line" >> "$hat_current/.bash-hat"
     hat_enable_completion "$(awk '{print $1}' <<<"$cmdline")"
@@ -89,7 +92,7 @@ function hat_complete {
   local old_ifs=$IFS
   IFS=$'\n'
   local compvar=hat_original_complete_for_$1
-  COMPREPLY=( $(eval "compgen ${!compvar}") )
+  COMPREPLY=( $(eval "compgen ${!compvar} 2>/dev/null") )
   [[ -n "$hat_current" ]] && COMPREPLY+=( $(hat_contextual_completions "$@") )
   IFS=$old_ifs
 }
@@ -103,7 +106,7 @@ function hat {
 
     init)
       touch .bash-hat
-      hat_use "$PWD"
+      hat_use .
       ;;
 
     ls)
