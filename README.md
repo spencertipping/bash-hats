@@ -26,6 +26,17 @@ $ echo <tab>            # history-based tab completion
 $ echo hi > foo
 ```
 
+## Commands
+```sh
+$ hat init              # creates a hat for this directory
+$ hat use ~/tmp         # dons the hat for ~/tmp
+$ hat dissoc            # undons the current hat
+$ hat ls echo           # prints all history containing "echo"
+$ hat ls '> foo'        # prints all commands writing to the file foo
+$ hat ? foo             # same as 'hat ls "> foo"'
+$ hat status            # shows current hat
+```
+
 All context is stored in a `.bash-hat` file in the directory from which you ran
 `hat init`. Like with git and other systems, hats propagate into
 subdirectories.

@@ -39,8 +39,12 @@ function hat_observe {
   [[ -n $hat_current ]] || return 0
   local cmdline=$(history 1 | sed -r 's/^\s*[0-9]+\s*//')
   if [[ -n $cmdline ]]; then
-    printf "%s\t%s\t%s\n" "$USER" "$HOSTNAME" "$cmdline" \
-        >> "$hat_current/.bash-hat"
+    # Don't append a duplicate. This happens sometimes because the DEBUG trap
+    # is more invasive than we really need.
+    local last_line=$(tail -n1 "$hat_current/.bash-hat")
+    local new_line=$(printf "%s\t%s\t%s\n" "$USER" "$HOSTNAME" "$cmdline")
+    [[ "$new_line" == "$last_line" ]] \
+      || echo "$new_line" >> "$hat_current/.bash-hat"
     hat_enable_completion "$(awk '{print $1}' <<<"$cmdline")"
   fi
 }
@@ -90,13 +94,21 @@ function hat_complete {
 # Main function
 function hat {
   case $1 in
+    dissoc)
+      hat_use ''
+      ;;
+
     init)
       touch .bash-hat
       hat_use "$PWD"
       ;;
 
-    dissoc)
-      hat_use ''
+    ls)
+      if [[ -n "$hat_current" ]]; then
+        echo 'hat ls requires an active hat'
+        return 1
+      fi
+      cut -f3- "$hat_current/.bash-hat" | egrep "$2"
       ;;
 
     status)
@@ -111,13 +123,19 @@ function hat {
       hat_use "$2"
       ;;
 
+    \?)
+      hat ls "> $*"
+      ;;
+
     *)
       echo "usage: hat command args..."
       echo "commands:"
       echo "  dissoc    - stop using current hat"
       echo "  init      - create a hat for this directory"
+      echo "  ls <pat>  - search for <pat> in command history"
       echo "  status    - show current hat"
       echo "  use <dir> - use hat from another directory"
+      echo "  ? file    - same as 'hat ls \"> file\"'"
       echo
       ;;
   esac
