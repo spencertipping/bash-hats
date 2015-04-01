@@ -1,0 +1,54 @@
+#!/bin/bash
+# Source this in your .bashrc to enable bash hats.
+
+# hat context functions
+hat_current=
+
+function hat_enable_completion {
+  # Preserve any existing completion for the command. This matters because we
+  # don't want history to make other (possibly more useful) completions
+  # inaccessible.
+  # TODO
+}
+
+function hat_use {
+  [[ $1 == $hat_current ]] && return 0
+
+  if [[ ! -e "$1/.bash-hat" ]]; then
+    echo "hat use $1 failed; no hatfile in $1 (run 'hat init' in $1)"
+    return 1
+  fi
+
+  # Hats don't keep in-memory state, so no need to uninitialize any prior hat.
+  # All we need to do is apply the new one, which entails loading command
+  # history and setting hat_current.
+  hat_current=$1
+  history -r "$hat_current/.bash-hat"
+
+  for cmd in $(awk '{print $1}' "$hat_current/.bash-hat"); do
+    hat_enable_completion "$cmd"
+  done
+}
+
+# cd overloading (to detect hatfiles)
+if ! declare -f hat_original_cd > /dev/null; then
+  if hat_orignal_cd_source=$(declare -f cd); then
+    eval "hat_original_cd ${hat_original_cd_source#cd }"
+  else
+    function hat_original_cd { builtin cd -- "$@"; }
+  fi
+fi
+
+function cd {
+  hat_original_cd "$@" || return $?
+
+  # Look for a bash-hat file in this or any parent directory.
+  local dir=$PWD
+  while [[ "$dir" != / ]]; do
+    if [[ -r "$dir/.bash-hat" ]]; then
+      hat_use "$dir"
+      return 0
+    fi
+    dir=$(dirname "$dir")
+  done
+}
