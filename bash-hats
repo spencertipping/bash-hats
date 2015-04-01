@@ -56,7 +56,7 @@ function hat_enable_completion {
   # inaccessible.
   local varname=hat_original_complete_for_$1
   if [[ ! -n ${!varname} ]]; then
-    printf -v $varname %q "$(complete -p "$1" 2>/dev/null \
+    printf -v $varname %s "$(complete -p "$1" 2>/dev/null \
                              | sed -r 's/^\s*complete\s*//')"
     complete -F hat_complete $1
   fi
