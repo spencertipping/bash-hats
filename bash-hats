@@ -12,13 +12,16 @@ function hat_use {
     return 1
   fi
 
+  # Make the specified path absolute
+  local new_hat=$(cd "$1"; pwd)
+
   # Hats don't keep in-memory state, so no need to uninitialize any prior hat.
   # All we need to do is apply the new one, which entails loading command
   # history and setting hat_current.
-  if [[ -z "$1" ]]; then
+  if [[ -z "$new_hat" ]]; then
     echo "hat: dissociated from $hat_current"
   fi
-  hat_current=$1
+  hat_current=$new_hat
 
   if [[ -n "$hat_current" ]]; then
     history -r <(grep "^$USER\t$HOSTNAME" "$hat_current/.bash-hat" \
