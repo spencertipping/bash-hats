@@ -149,7 +149,7 @@ trap hat_observe DEBUG
 
 # cd overloading (to detect hatfiles)
 if ! declare -f hat_original_cd > /dev/null; then
-  if hat_orignal_cd_source=$(declare -f cd); then
+  if hat_original_cd_source=$(declare -f cd); then
     eval "hat_original_cd ${hat_original_cd_source#cd }"
   else
     function hat_original_cd { builtin cd -- "$@"; }
