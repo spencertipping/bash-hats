@@ -109,7 +109,7 @@ function hat {
       ;;
 
     ls)
-      if [[ -n "$hat_current" ]]; then
+      if [[ -z "$hat_current" ]]; then
         echo 'hat ls requires an active hat'
         return 1
       fi
