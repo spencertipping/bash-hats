@@ -6,6 +6,8 @@ hats. To setup:
 $ . bash-hats
 ```
 
+Be sure to source bash hats _after_ any other cd-overloading scripts like RVM.
+
 ## What hats do
 ```sh
 $ cd ~/tmp
@@ -13,18 +15,14 @@ $ hat init
 $ echo hi > foo         # this command is recorded
 ```
 
-Then, sometime later on, and from a different shell:
+Then, sometime later on from a different shell:
 
 ```sh
 $ cd ~/tmp
 hat: using /home/spencertipping/tmp
 $ history 1
 echo hi > foo
-$ hat ? foo             # tell me about this file or command
-echo hi > foo
 $ echo <tab>            # history-based tab completion
-$ echo hi <tab>
-$ echo hi > <tab>
 $ echo hi > foo
 ```
 

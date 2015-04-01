@@ -4,17 +4,10 @@
 # hat context functions
 hat_current=
 
-function hat_enable_completion {
-  # Preserve any existing completion for the command. This matters because we
-  # don't want history to make other (possibly more useful) completions
-  # inaccessible.
-  # TODO
-}
-
 function hat_use {
-  [[ $1 == $hat_current ]] && return 0
+  [[ $1 != $hat_current ]] || return 0
 
-  if [[ ! -e "$1/.bash-hat" ]]; then
+  if [[ -n "$1" && ! -e "$1/.bash-hat" ]]; then
     echo "hat use $1 failed; no hatfile in $1 (run 'hat init' in $1)"
     return 1
   fi
@@ -22,13 +15,105 @@ function hat_use {
   # Hats don't keep in-memory state, so no need to uninitialize any prior hat.
   # All we need to do is apply the new one, which entails loading command
   # history and setting hat_current.
+  if [[ -z "$1" ]]; then
+    echo "hat: dissociated from $hat_current"
+  fi
   hat_current=$1
-  history -r "$hat_current/.bash-hat"
 
-  for cmd in $(awk '{print $1}' "$hat_current/.bash-hat"); do
-    hat_enable_completion "$cmd"
-  done
+  if [[ -n "$hat_current" ]]; then
+    history -r <(grep "^$USER\t$HOSTNAME" "$hat_current/.bash-hat" \
+                 | cut -f3- \
+                 | uniq)
+    for cmd in $(cut -f3- "$hat_current/.bash-hat" \
+                   | awk '{print $1}' \
+                   | grep . \
+                   | sort \
+                   | uniq); do
+      hat_enable_completion "$cmd"
+    done
+    echo "hat: using $hat_current"
+  fi
 }
+
+function hat_observe {
+  [[ -n $hat_current ]] || return 0
+  local cmdline=$(history 1 | sed -r 's/^\s*[0-9]+\s*//')
+  if [[ -n $cmdline ]]; then
+    printf "%s\t%s\t%s\n" "$USER" "$HOSTNAME" "$cmdline" \
+        >> "$hat_current/.bash-hat"
+    hat_enable_completion "$(awk '{print $1}' <<<"$cmdline")"
+  fi
+}
+
+# Historical completion
+function hat_enable_completion {
+  # Preserve any existing completion for the command. This matters because we
+  # don't want history to make other (possibly more useful) completions
+  # inaccessible.
+  local varname=hat_original_complete_for_$1
+  if [[ ! -n ${!varname} ]]; then
+    printf -v $varname %q "$(complete -p "$1" 2>/dev/null \
+                             | sed 's/^complete //')"
+    complete -F hat_complete $1
+  fi
+}
+
+function hat_contextual_completions {
+  # Locate lines for this command in the hat log, then print matches against
+  # the prior word.
+  cut -f3- "$hat_current/.bash-hat" \
+    | perl -ne 'BEGIN { ($cmd, $part, $prior) = @ARGV; @ARGV = () }
+                sub sw { substr($_[0], 0, length $_[1]) eq $_[1] }
+                chomp;
+                if (sw $_, $cmd) {
+                  my @words = /((?:\S|\\.)+)/g;
+                  for (my $i = 0; $i < $#words; ++$i) {
+                    print join(" ", @words[$i .. $#words]), "\n"
+                      if length($part) && sw $words[$i], $part;
+                    print join(" ", @words[$i + 1 .. $#words]), "\n"
+                      if $words[$i] eq $prior && sw $words[$i + 1], $part;
+                  }
+                }' "$@" \
+    | sort \
+    | uniq
+}
+
+function hat_complete {
+  local old_ifs=$IFS
+  IFS=$'\n'
+  local compvar=hat_original_complete_for_$1
+  COMPREPLY=( $(compgen ${!compvar}) )
+  [[ -n "$hat_current" ]] && COMPREPLY+=( $(hat_contextual_completions "$@") )
+  IFS=$old_ifs
+}
+
+# Main function
+function hat {
+  case $1 in
+    init)
+      touch .bash-hat
+      hat_use "$PWD"
+      ;;
+
+    dissoc)
+      hat_use ''
+      ;;
+
+    use)
+      hat_use "$2"
+      ;;
+
+    *)
+      echo "usage: hat command args..."
+      echo "commands:"
+      echo "  init      - create a hat in this directory"
+      echo "  use <dir> - use hat from another directory"
+      echo
+      ;;
+  esac
+}
+
+trap hat_observe DEBUG
 
 # cd overloading (to detect hatfiles)
 if ! declare -f hat_original_cd > /dev/null; then
@@ -51,4 +136,8 @@ function cd {
     fi
     dir=$(dirname "$dir")
   done
+
+  # If we didn't find a hat, unset the current one so we don't keep recording
+  # history.
+  [[ "$dir" == / ]] && hat_use ''
 }
