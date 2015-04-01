@@ -12,18 +12,16 @@ function hat_use {
     return 1
   fi
 
-  # Make the specified path absolute
-  local new_hat=$(builtin cd "$1"; pwd)
-
   # Hats don't keep in-memory state, so no need to uninitialize any prior hat.
   # All we need to do is apply the new one, which entails loading command
   # history and setting hat_current.
-  if [[ -z "$new_hat" ]]; then
+  if [[ -z "$1" ]]; then
     echo "hat: dissociated from $hat_current"
-  fi
-  hat_current=$new_hat
+    hat_current=
+  else
+    # Make the specified path absolute
+    hat_current=$(builtin cd "$1"; pwd)
 
-  if [[ -n "$hat_current" ]]; then
     history -r <(grep "^$USER\t$HOSTNAME" "$hat_current/.bash-hat" \
                  | cut -f3- \
                  | uniq)
@@ -40,7 +38,7 @@ function hat_use {
 
 function hat_observe {
   [[ -n $hat_current ]] || return 0
-  local cmdline=$(history 1 | sed -r 's/^\s*[0-9]+\s*//')
+  local cmdline=$(history 1 | sed -r '1s/^\s*[0-9]+\s*//')
   if [[ -n $cmdline ]]; then
     # Don't append a duplicate. This happens sometimes because the DEBUG trap
     # is more invasive than we really need.
