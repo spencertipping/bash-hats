@@ -93,6 +93,7 @@ function hat_complete {
   COMPREPLY=( $(eval "compgen ${!compvar} 2>/dev/null") )
   [[ -n "$hat_current" ]] && COMPREPLY+=( $(hat_contextual_completions "$@") )
   IFS=$old_ifs
+  :
 }
 
 # Main function
