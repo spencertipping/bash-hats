@@ -99,6 +99,14 @@ function hat {
       hat_use ''
       ;;
 
+    status)
+      if [[ -n "$hat_current" ]]; then
+        echo "using hat $hat_current"
+      else
+        echo "no current hat"
+      fi
+      ;;
+
     use)
       hat_use "$2"
       ;;
@@ -106,7 +114,9 @@ function hat {
     *)
       echo "usage: hat command args..."
       echo "commands:"
-      echo "  init      - create a hat in this directory"
+      echo "  dissoc    - stop using current hat"
+      echo "  init      - create a hat for this directory"
+      echo "  status    - show current hat"
       echo "  use <dir> - use hat from another directory"
       echo
       ;;
