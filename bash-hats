@@ -58,11 +58,13 @@ function hat_enable_completion {
   # Preserve any existing completion for the command. This matters because we
   # don't want history to make other (possibly more useful) completions
   # inaccessible.
-  local varname=hat_original_complete_for_$1
-  if [[ ! -n ${!varname} ]]; then
-    printf -v $varname %s "$(complete -p "$1" 2>/dev/null \
-                             | sed -r 's/^\s*complete\s*//')"
-    complete -F hat_complete $1
+  if ! grep '[^-A-Za-z0-9_]' <<<"$1" > /dev/null; then
+    local varname=hat_original_complete_for_$1
+    if [[ ! -n ${!varname} ]]; then
+      printf -v $varname %s "$(complete -p "$1" 2>/dev/null \
+                               | sed -r 's/^\s*complete\s*//')"
+      complete -F hat_complete $1
+    fi
   fi
 }
 
