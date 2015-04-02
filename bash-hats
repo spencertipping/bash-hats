@@ -101,10 +101,10 @@ function hat_complete {
   local compvar=hat_original_complete_for_$1
   local compval=${!compvar}
   local compwords="$(eval "compgen ${compval:--o bashdefault -f} 2>/dev/null")"
-  local defaultcomp="$(compgen -W "$compwords" -- "$2")"
-  local hatcomp="$(hat_contextual_completions "$@")"
-  [[ -n "$hatcomp" && -z "$2" ]] && defaultcomp=
-  COMPREPLY=( $defaultcomp $(hat_contextual_completions "$@") )
+  local defaultcomp=( "$(compgen -W "$compwords" -- "$2")" )
+  local hatcomp=( "$(hat_contextual_completions "$@")" )
+  [[ ${#hatcomp} -gt 0 && -z "$2" ]] && defaultcomp=()
+  COMPREPLY=( "${defaultcomp[@]}" "${hatcomp[@]}" )
   IFS=$old_ifs
   :
 }
