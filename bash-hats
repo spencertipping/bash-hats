@@ -80,11 +80,16 @@ function hat_contextual_completions {
   [[ -n "$hat_current" ]] || return 0
   egrep -v '^\s*(#.*)?$' "$hat_current/.bash-hat" \
     | perl -ne 'BEGIN { ($cmd, $part, $prior) = @ARGV; @ARGV = () }
-                sub sw { substr($_[0], 0, length $_[1]) eq $_[1] }
+                sub sw {
+                  my ($x, $y) = @_;
+                  $y =~ s/["'"'"']//g;
+                  $x =~ s/["'"'"']//g;
+                  substr($x, 0, length $y) eq $y;
+                }
                 chomp;
                 my $contextual = 0;
                 if (sw $_, $cmd) {
-                  my @words = /((?:\S|\\.)+)/g;
+                  my @words = /(\S+)/g;
                   for (my $i = 0; $i < $#words; ++$i) {
                     my $print =
                       $words[$i] eq $prior && sw $words[$i + 1], $part;
