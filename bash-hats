@@ -92,7 +92,7 @@ function hat_complete {
   local old_ifs=$IFS
   IFS=$'\n'
   local compvar=hat_original_complete_for_$1
-  COMPREPLY=( $(eval "compgen ${!compvar} 2>/dev/null") )
+  COMPREPLY=( $(compgen -W "$(eval "compgen ${!compvar} 2>/dev/null")" -- "$3") )
   [[ -n "$hat_current" ]] && COMPREPLY+=( $(hat_contextual_completions "$@") )
   IFS=$old_ifs
   :
