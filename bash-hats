@@ -152,6 +152,10 @@ function hat {
       hat_use "$2"
       ;;
 
+    \!)
+      hat ls "> $*" | bash
+      ;;
+
     \?)
       hat ls "> $*"
       ;;
@@ -166,6 +170,7 @@ function hat {
       echo "  status    - show current hat"
       echo "  use <dir> - use hat from another directory"
       echo "  ? file    - same as 'hat ls \"> file\"'"
+      echo "  ! file    - same as 'hat ? file | bash'"
       echo
       ;;
   esac
