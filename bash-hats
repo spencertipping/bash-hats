@@ -183,6 +183,8 @@ function hat {
   esac
 }
 
+[[ -e .bash-hat ]] && hat use .
+
 trap hat_observe DEBUG
 
 # cd overloading (to detect hatfiles)
