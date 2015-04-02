@@ -32,14 +32,11 @@ function hat_use {
     # Make the specified path absolute
     hat_current=$(builtin cd "$1"; pwd)
 
-    history -r <(grep "^$USER\t$HOSTNAME" "$hat_current/.bash-hat" \
-                 | cut -f3- \
-                 | uniq)
-    for cmd in $(cut -f3- "$hat_current/.bash-hat" \
-                   | awk '{print $1}' \
-                   | grep . \
-                   | sort \
-                   | uniq); do
+    history -r <(grep "^$USER\t$HOSTNAME" "$hat_current/.bash-hat" | uniq)
+    for cmd in $(awk '{print $1}' "$hat_current/.bash-hat" \
+                 | grep . \
+                 | sort \
+                 | uniq); do
       hat_enable_completion "$cmd"
     done
     echo "hat: using $hat_current"
@@ -53,10 +50,7 @@ function hat_observe {
     # Don't append a duplicate. This happens sometimes because the DEBUG trap
     # is more invasive than we really need.
     local last_line=$(tail -n1 "$hat_current/.bash-hat")
-    local new_line=$(printf "%s\t%s\t%s\n" \
-                            "$USER" \
-                            "$HOSTNAME" \
-                            "${cmdline//$'\n'/ }")
+    local new_line="${cmdline//$'\n'/ }"
     [[ "$new_line" == "$last_line" ]] \
       || echo "$new_line" >> "$hat_current/.bash-hat"
     hat_enable_completion "$(awk '{print $1}' <<<"$cmdline")"
@@ -85,7 +79,6 @@ function hat_contextual_completions {
   # the prior word.
   [[ -n "$hat_current" ]] || return 0
   egrep -v '^\s*(#.*)?$' "$hat_current/.bash-hat" \
-    | cut -f3- \
     | perl -ne 'BEGIN { ($cmd, $part, $prior) = @ARGV; @ARGV = () }
                 sub sw { substr($_[0], 0, length $_[1]) eq $_[1] }
                 chomp;
@@ -137,7 +130,7 @@ function hat {
         echo 'hat ls requires an active hat'
         return 1
       fi
-      cut -f3- "$hat_current/.bash-hat" | egrep "$2"
+      egrep "$2" "$hat_current/.bash-hat"
       ;;
 
     status)
