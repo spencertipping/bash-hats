@@ -82,13 +82,20 @@ function hat_contextual_completions {
     | perl -ne 'BEGIN { ($cmd, $part, $prior) = @ARGV; @ARGV = () }
                 sub sw { substr($_[0], 0, length $_[1]) eq $_[1] }
                 chomp;
+                my $contextual = 0;
                 if (sw $_, $cmd) {
                   my @words = /((?:\S|\\.)+)/g;
                   for (my $i = 0; $i < $#words; ++$i) {
-                    print join(" ", @words[$i .. $#words]), "\n"
-                      if length($part) && sw $words[$i], $part;
-                    print join(" ", @words[$i + 1 .. $#words]), "\n"
-                      if $words[$i] eq $prior && sw $words[$i + 1], $part;
+                    my $print =
+                      $words[$i] eq $prior && sw $words[$i + 1], $part;
+                    $contextual ||= $print;
+                    print join(" ", @words[$i + 1 .. $#words]), "\n" if $print;
+                  }
+                  unless ($contextual) {
+                    for (my $i = 0; $i < $#words; ++$i) {
+                      print join(" ", @words[$i .. $#words]), "\n"
+                        if length($part) && sw $words[$i], $part;
+                    }
                   }
                 }' "$@" \
     | sort \
