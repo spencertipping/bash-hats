@@ -118,7 +118,9 @@ function hat_complete {
 
 # Main function
 function hat {
-  case $1 in
+  local c=$1
+  shift
+  case "$c" in
     dissoc)
       hat_use ''
       ;;
@@ -137,7 +139,7 @@ function hat {
         echo 'hat ls requires an active hat'
         return 1
       fi
-      egrep "$2" "$hat_current/.bash-hat"
+      egrep "$1" "$hat_current/.bash-hat"
       ;;
 
     status)
@@ -149,10 +151,10 @@ function hat {
       ;;
 
     use)
-      hat_use "$2"
+      hat_use "$1"
       ;;
 
-    \!)
+    !)
       hat ls "> $*" | bash
       ;;
 
