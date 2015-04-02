@@ -3,6 +3,7 @@
 
 # hat context functions
 hat_current=
+declare -a hat_overloaded
 
 function hat_use {
   [[ $1 != $hat_current ]] || return 0
@@ -11,6 +12,15 @@ function hat_use {
     echo "hat use $1 failed; no hatfile in $1 (run 'hat init' in $1)"
     return 1
   fi
+
+  # Restore default completion for all overloaded commands
+  for c in "${hat_overloaded[@]}"; do
+    local varname=hat_original_complete_for_$c
+    complete -r $c
+    [[ -n ${!varname} ]] && eval "complete ${!varname} $c"
+    unset hat_original_complete_for_$c
+  done
+  hat_overloaded=()
 
   # Hats don't keep in-memory state, so no need to uninitialize any prior hat.
   # All we need to do is apply the new one, which entails loading command
@@ -58,9 +68,11 @@ function hat_enable_completion {
   # Preserve any existing completion for the command. This matters because we
   # don't want history to make other (possibly more useful) completions
   # inaccessible.
+  [[ -n $hat_current ]] || return 0
   if ! grep '[^-A-Za-z0-9_]' <<<"$1" > /dev/null; then
     local varname=hat_original_complete_for_$1
     if [[ ! -n ${!varname} ]]; then
+      hat_overloaded+=( "$1" )
       printf -v $varname %s "$(complete -p "$1" 2>/dev/null \
                                | sed -r 's/^\s*complete\s*//')"
       complete -F hat_complete $1
@@ -71,7 +83,9 @@ function hat_enable_completion {
 function hat_contextual_completions {
   # Locate lines for this command in the hat log, then print matches against
   # the prior word.
-  cut -f3- "$hat_current/.bash-hat" \
+  [[ -n "$hat_current" ]] || return 0
+  egrep -v '^\s*(#.*)?$' "$hat_current/.bash-hat" \
+    | cut -f3- \
     | perl -ne 'BEGIN { ($cmd, $part, $prior) = @ARGV; @ARGV = () }
                 sub sw { substr($_[0], 0, length $_[1]) eq $_[1] }
                 chomp;
@@ -92,8 +106,12 @@ function hat_complete {
   local old_ifs=$IFS
   IFS=$'\n'
   local compvar=hat_original_complete_for_$1
-  COMPREPLY=( $(compgen -W "$(eval "compgen ${!compvar} 2>/dev/null")" -- "$3") )
-  [[ -n "$hat_current" ]] && COMPREPLY+=( $(hat_contextual_completions "$@") )
+  local compval=${!compvar}
+  local compwords="$(eval "compgen ${compval:--o bashdefault -f} 2>/dev/null")"
+  local defaultcomp="$(compgen -W "$compwords" -- "$2")"
+  local hatcomp="$(hat_contextual_completions "$@")"
+  [[ -n "$hatcomp" && -z "$2" ]] && defaultcomp=
+  COMPREPLY=( $defaultcomp $(hat_contextual_completions "$@") )
   IFS=$old_ifs
   :
 }
@@ -103,6 +121,10 @@ function hat {
   case $1 in
     dissoc)
       hat_use ''
+      ;;
+
+    edit)
+      "${EDITOR:-${VISUAL:-/usr/bin/vim}}" "$hat_current/.bash-hat"
       ;;
 
     init)
@@ -138,6 +160,7 @@ function hat {
       echo "usage: hat command args..."
       echo "commands:"
       echo "  dissoc    - stop using current hat"
+      echo "  edit      - edit history"
       echo "  init      - create a hat for this directory"
       echo "  ls <pat>  - search for <pat> in command history"
       echo "  status    - show current hat"
