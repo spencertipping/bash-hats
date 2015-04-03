@@ -185,7 +185,11 @@ function hat {
 
 [[ -e .bash-hat ]] && hat use .
 
-trap hat_observe DEBUG
+function hat_identity { return $?; }
+
+if [[ "$PROMPT_COMMAND" == "${PROMPT_COMMAND/hat_observe/}" ]]; then
+  PROMPT_COMMAND="${PROMPT_COMMAND:-hat_identity}; hat_observe"
+fi
 
 # cd overloading (to detect hatfiles)
 if ! declare -f hat_original_cd > /dev/null; then
