@@ -90,8 +90,9 @@ function hat_contextual_completions {
                 my $contextual = 0;
                 if (sw $_, "$cmd ") {
                   my @words = /([-!$%^*+_~`\/,.a-zA-Z0-9\[\]]+
-                              | [=:@<>"'"'"']+
-                              | \s+)/xg;
+                              | [=:@<>"'"'"'(){}|;&\#`\\]+
+                              | \s+
+                              | [\s\S])/xg;
                   my %prefixes;
                   my $last = $words[0];
                   for (1 .. $#words) {
