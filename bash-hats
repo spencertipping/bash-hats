@@ -86,13 +86,20 @@ function hat_contextual_completions {
                   $x =~ s/["'"'"']//g;
                   substr($x, 0, length $y) eq $y;
                 }
+                sub emit {
+                  my ($s) = @_;
+                  $s =~ s/(.+?)["'"'"'].*/$1/;
+                  print "$s\n";
+                }
                 chomp;
                 my $contextual = 0;
                 if (sw $_, "$cmd ") {
-                  my @words = /([-!$%^*+_~`\/,.a-zA-Z0-9\[\]]+
-                              | [=:@<>"'"'"'(){}|;&\#`\\]+
-                              | \s+
-                              | [\s\S])/xg;
+                  my @words = /( [-!$%^*+_~`\/,.a-zA-Z0-9\[\]]+
+                               | "(?:[^"\\]|\\.)*"?
+                               | '"'"'[^'"'"']*'"'"'?
+                               | [=:@<>(){}|;&\#`\\]+
+                               | \s+
+                               | [\s\S] )/xg;
                   my %prefixes;
                   my $last = $words[0];
                   for (1 .. $#words) {
@@ -104,11 +111,11 @@ function hat_contextual_completions {
                     my $print = $prefixes{$i} eq $prior
                              && sw $words[$i], $part;
                     $contextual ||= $print;
-                    print join("", @words[$i .. $#words]), "\n" if $print;
+                    emit join("", @words[$i .. $#words]) if $print;
                   }
                   unless ($contextual) {
                     for (my $i = 0; $i < $#words; ++$i) {
-                      print join("", @words[$i .. $#words]), "\n"
+                      emit join("", @words[$i .. $#words])
                         if length($part) && sw $words[$i], $part;
                     }
                   }
