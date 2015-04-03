@@ -82,13 +82,21 @@ function hat_contextual_completions {
     | perl -ne 'BEGIN { ($cmd, $part, $prior) = @ARGV; @ARGV = () }
                 sub sw {
                   my ($x, $y) = @_;
-                  $y =~ s/["'"'"']//g;
-                  $x =~ s/["'"'"']//g;
+                  #$y =~ s/["'"'"']//g;
+                  #$x =~ s/["'"'"']//g;
                   substr($x, 0, length $y) eq $y;
                 }
                 sub emit {
                   my ($s) = @_;
-                  $s =~ s/(.+?)["'"'"'].*/$1/;
+
+                  # Make sure not to emit a string terminator for the current
+                  # word; bash does this for us.
+                  my $starter = $part;
+                  1 while $starter =~ s/^[^"'"'"']+
+                                       |^"(?:[^"\\]|\\.)*"
+                                       |^'"'"'[^'"'"']*'"'"'//;
+                  $starter =~ s/^(.).*$/$1/;
+                  $s =~ s/(.+?)$starter.+/$1/ if length $starter;
                   print "$s\n";
                 }
                 chomp;
