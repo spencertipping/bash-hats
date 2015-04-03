@@ -127,6 +127,10 @@ function hat_complete {
   local hatcomp=( $(hat_contextual_completions "$@") )
   [[ ${#hatcomp[*]} -gt 0 && -z "$2" ]] && defaultcomp=()
   COMPREPLY=( "${defaultcomp[@]}" "${hatcomp[@]}" )
+
+  if [[ -n "$hat_current" && ${#COMPREPLY[*]} -eq 0 ]]; then
+    echo -en "\033[s\nhat: no completions for '$1', '$2', '$3'\033[u" 1>&2
+  fi
   IFS=$old_ifs
   :
 }
