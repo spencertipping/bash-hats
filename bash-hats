@@ -5,6 +5,9 @@
 hat_current=
 declare -a hat_overloaded
 
+hat_readline_line=
+hat_readline_point=
+
 function hat_use {
   [[ $1 != $hat_current ]] || return 0
 
@@ -78,58 +81,38 @@ function hat_contextual_completions {
   # Locate lines for this command in the hat log, then print matches against
   # the prior word.
   [[ -n "$hat_current" ]] || return 0
-  egrep -v '^\s*(#.*)?$' "$hat_current/.bash-hat" \
-    | perl -ne 'BEGIN { ($cmd, $part, $prior) = @ARGV; @ARGV = () }
-                sub sw {
-                  my ($x, $y) = @_;
-                  #$y =~ s/["'"'"']//g;
-                  #$x =~ s/["'"'"']//g;
-                  substr($x, 0, length $y) eq $y;
-                }
-                sub emit {
-                  my ($s) = @_;
 
-                  # Make sure not to emit a string terminator for the current
-                  # word; bash does this for us.
-                  my $starter = $part;
-                  1 while $starter =~ s/^[^"'"'"']+
-                                       |^"(?:[^"\\]|\\.)*"
-                                       |^'"'"'[^'"'"']*'"'"'//;
-                  $starter =~ s/^(.).*$/$1/;
-                  $s =~ s/(.+?)$starter.+/$1/ if length $starter;
-                  print "$s\n";
-                }
-                chomp;
-                my $contextual = 0;
-                if (sw $_, "$cmd ") {
-                  my @words = /( [-!$%^*+_~`\/,.a-zA-Z0-9\[\]]+
-                               | "(?:[^"\\]|\\.)*"?
-                               | '"'"'[^'"'"']*'"'"'?
-                               | [=:@<>(){}|;&\#`\\]+
-                               | \s+
-                               | [\s\S] )/xg;
-                  my %prefixes;
-                  my $last = $words[0];
-                  for (1 .. $#words) {
-                    next if $words[$_] =~ /^\s*$/;
-                    $prefixes{$_} = $last;
-                    $last = $words[$_];
-                  }
-                  for (my $i = 1; $i < @words; ++$i) {
-                    my $print = $prefixes{$i} eq $prior
-                             && sw $words[$i], $part;
-                    $contextual ||= $print;
-                    emit join("", @words[$i .. $#words]) if $print;
-                  }
-                  unless ($contextual) {
-                    for (my $i = 0; $i < $#words; ++$i) {
-                      emit join("", @words[$i .. $#words])
-                        if length($part) && sw $words[$i], $part;
-                    }
-                  }
-                }' "$@" \
-    | sort \
-    | uniq
+  egrep -v '^\s*(#.*)?$' "$hat_current/.bash-hat" \
+    | perl -e 'use List::Util qw/min max/;
+               my ($cmd, $word, $point, $line) = @ARGV;
+               my $before = substr $line, 0, $point;
+               my $after  = substr $line, $point;
+               @ARGV      = ();
+
+               sub sw   { $_[1] eq substr $_[0], 0, length $_[1] }
+               sub ew   { length $_[0] >= length $_[1]
+                       && $_[1] eq substr $_[0], length($_[0]) - length $_[1] }
+               sub emit { print "$word$_[0]\n" }
+
+               # Look for things by longest prefix looking leftward from the
+               # insertion point. We require at least three characters, and
+               # restrict to just the current command.
+               exit unless 4 < length $before;
+               my $context = substr $before, max 0, length($before) - 4;
+               chomp(my @history = grep sw($_, $cmd)
+                                     && index($_, $context) > -1, <STDIN>);
+               for my $start (0 .. length($before) - 4) {
+                 my $sub = substr $before, $start;
+                 for (@history) {
+                   my $i = index $_, $sub;
+                   next unless $i > -1;
+                   emit substr $_, $i + length $sub;
+                 }
+               }' \
+               "$1" \
+               "$2" \
+               $hat_readline_point \
+               "$hat_readline_line"
 }
 
 function hat_complete {
@@ -144,7 +127,8 @@ function hat_complete {
   COMPREPLY=( "${defaultcomp[@]}" "${hatcomp[@]}" )
 
   if [[ -n "$hat_current" && ${#COMPREPLY[*]} -eq 0 ]]; then
-    echo -en "\033[s\nhat: no completions for '$1', '$2', '$3'\033[u" 1>&2
+    echo -e  "\033[s\nhat: no completions for '$1', '$2', '$3'"       1>&2
+    echo -en "     ('$hat_readline_line' @$hat_readline_point)\033[u" 1>&2
   fi
   IFS=$old_ifs
   :
@@ -215,6 +199,18 @@ function hat {
 [[ -e .bash-hat ]] && hat use .
 
 function hat_identity { return $?; }
+
+function hat_setup_complete {
+  hat_readline_line=$READLINE_LINE
+  hat_readline_point=$READLINE_POINT
+  :
+}
+
+# Long story, but the short version is that we need access to $READLINE_LINE
+# and $READLINE_POINT to do completion properly.
+bind -x '"\C-b1":hat_setup_complete'
+bind    '"\C-b2":complete'
+bind       '"\t":"\C-b1\C-b2"'
 
 if [[ "$PROMPT_COMMAND" == "${PROMPT_COMMAND/hat_observe/}" ]]; then
   PROMPT_COMMAND="${PROMPT_COMMAND:-hat_identity}; hat_observe"
